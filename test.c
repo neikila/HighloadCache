@@ -5,18 +5,11 @@
 
 // lscpu
 
-
-struct List {
-    struct List* next;
-    size_t index;
-};
-
 struct MeasureList {
     struct MeasureList* next;
     size_t index;
 };
 
-typedef struct List List;
 typedef struct MeasureList MeasureList;
 MeasureList** measureArray; 
 
@@ -31,10 +24,22 @@ int main() {
 
     FILE* results = fopen("results", "w");
     size_t size = 8;
+    double multiplier = 1.2;
     const size_t innerLoopsAmount = 1000;
     size_t k;
-    size_t maxSize = 4;
+    size_t maxSize = 8;
 //    size_t temp;
+
+    /*
+    MeasureList* head_test = prepare(size); 
+    size_t i = 0;
+    for (i = 0; i < size; ++i) {
+        printf("%ld ", (size_t)head_test->index); 
+        head_test = head_test->next;
+    }
+    putchar('\n');
+    return 0;
+    */
 
     while ((sizeof(MeasureList) * size / 1024 / 1024) < maxSize) {
         printf("\nSize: %d\n", (int)size);
@@ -69,7 +74,7 @@ int main() {
         fflush(results);
 
         freeMeasureList(size);
-        size = (int) (size * 1.3);
+        size = (int) (size * multiplier);
     }
     fclose(results);
 }
@@ -92,8 +97,8 @@ void freeMeasureList(const size_t size) {
     measureArray = NULL;
 }
 
-List* initListElement(List* parent, size_t value) {
-    List* newListEl = (List*) malloc(sizeof(List));
+MeasureList* initListElement(MeasureList* parent, size_t value) {
+    MeasureList* newListEl = (MeasureList*) malloc(sizeof(MeasureList));
     newListEl->next = NULL;
     newListEl->index = value;
 
@@ -103,7 +108,7 @@ List* initListElement(List* parent, size_t value) {
     return newListEl;
 }
 
-List* getListAfterNSteps(List* current, size_t steps, List **prev) {
+MeasureList* getListAfterNSteps(MeasureList* current, size_t steps, MeasureList **prev) {
     while (steps-- > 0) {
         *prev = current;
         current = current->next;
@@ -111,7 +116,7 @@ List* getListAfterNSteps(List* current, size_t steps, List **prev) {
     return current;
 }
 
-void deleteListEl(List* listEl, List* prev) {
+void deleteListEl(MeasureList* listEl, MeasureList* prev) {
     if (prev != NULL)
         prev->next = listEl->next;
 }
@@ -119,37 +124,43 @@ void deleteListEl(List* listEl, List* prev) {
 MeasureList* prepare(const size_t size) {
     measureArray = (MeasureList**) malloc(sizeof(MeasureList*) * size);
     size_t i;
-    for (i = 0; i < size; ++i) {
+    measureArray[0] = (MeasureList*) malloc(sizeof(MeasureList));
+    measureArray[0]->index = 0;
+    for (i = 1; i < size; ++i) {
         measureArray[i] = (MeasureList*) malloc(sizeof(MeasureList));
         measureArray[i]->index = i;
+        measureArray[i - 1]->next = measureArray[i];
     }
-    
-    List* head = initListElement(NULL, 0);
-    List* current = head;
-    for (i = 1; i < size; ++i) {
-        current = initListElement(current, i);
-    }
-    current->next = head;
-    current = head;
+    measureArray[size - 1]->next = measureArray[0];
 
-    List* temp;
+    
+    MeasureList* head = NULL;
+    MeasureList *current, *last, *prev;
     size_t randInt;
-    MeasureList* resultHead = NULL;
-    MeasureList* last = resultHead; 
-    List* prev;
+
+    /*
+    size_t j = 0;
+    current = measureArray[0];
+    for (j = 0; j < size; ++j) {
+        printf("%ld ", (long)current->index);
+        current = current->next;
+    }
+    putchar('\n');
+    */
+
+    current = measureArray[0];
     for (i = 0; i < size; ++i){
         randInt = rand() % (size - i);
-        temp = current = getListAfterNSteps(current, randInt, &prev);
+        current = getListAfterNSteps(current, randInt, &prev);
         deleteListEl(current, prev);
-        if (last != NULL) {
-            last->next = measureArray[current->index];
+        if (head != NULL) {
+            last->next = current;
         } else {
-            resultHead = measureArray[current->index];
+            head = last = current;
         }
-        last = measureArray[current->index];
+        last = current;
         current = current->next;
-        free(temp);
     }
-    last->next = resultHead;
-    return resultHead;
+    last->next = head;
+    return head;
 }
