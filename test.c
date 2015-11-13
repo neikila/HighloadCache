@@ -6,7 +6,7 @@
 // lscpu
 size_t size = 8;
 double multiplier = 1.3;
-const size_t innerLoopsAmount = 1000;
+const size_t innerLoopsAmount = 200;
 size_t maxSize = 8;
 
 struct MeasureList {
@@ -54,8 +54,9 @@ int main() {
         k = innerLoopsAmount;
         prepareCache(200, size, randomIndexes);
         printf("Start iterating\n");
-        gettimeofday(&start, &tz);
+        double resultTime = 0; 
         while (--k > 0) {
+            gettimeofday(&start, &tz);
             randomIndexes = randomIndexes->next;
             while (randomIndexes != head) {
                 //        if (randomIndexes == NULL)
@@ -63,14 +64,14 @@ int main() {
                 //        printf("%d ", (int)randomIndexes->index);
                 randomIndexes = randomIndexes->next;
             }
+            gettimeofday(&finish, &tz);
+            delta.tv_usec = finish.tv_usec - start.tv_usec;
+            delta.tv_sec = finish.tv_sec - start.tv_sec;
+            resultTime += ((double)(delta.tv_sec * 1000000 + delta.tv_usec)) / size;
         }
-        gettimeofday(&finish, &tz);
 
-        delta.tv_usec = finish.tv_usec - start.tv_usec;
-        delta.tv_sec = finish.tv_sec - start.tv_sec;
-        double resultTime = ((double)(delta.tv_sec * 1000000 + delta.tv_usec)) / (innerLoopsAmount * size);
         printf("%f mc\n", resultTime);
-        fprintf(results, "%ld %f\n", sizeof(MeasureList) * size, resultTime); 
+        fprintf(results, "%ld %f\n", sizeof(MeasureList) * size, resultTime / innerLoopsAmount); 
         fflush(results);
 
         freeMeasureList(size);
@@ -97,30 +98,6 @@ void freeMeasureList(const size_t size) {
     measureArray = NULL;
 }
 
-inline MeasureList* initListElement(MeasureList* parent, size_t value) {
-    MeasureList* newListEl = (MeasureList*) malloc(sizeof(MeasureList));
-    newListEl->next = NULL;
-//    newListEl->index = value;
-
-    if (parent != NULL) {
-        parent->next = newListEl;
-    }
-    return newListEl;
-}
-
-inline MeasureList* getListAfterNSteps(MeasureList* current, size_t steps, MeasureList **prev) {
-    while (steps-- > 0) {
-        *prev = current;
-        current = current->next;
-    }
-    return current;
-}
-
-void deleteListEl(MeasureList* listEl, MeasureList* prev) {
-    if (prev != NULL)
-        prev->next = listEl->next;
-}
-
 MeasureList* prepare(const size_t size) {
     measureArray = (MeasureList**) malloc(sizeof(MeasureList*) * size);
     size_t i;
@@ -133,7 +110,7 @@ MeasureList* prepare(const size_t size) {
 
     
     MeasureList* head = NULL;
-    MeasureList *current, *last, *prev;
+    MeasureList *current, *temp;
     size_t randInt;
 
     /*
@@ -146,19 +123,17 @@ MeasureList* prepare(const size_t size) {
     putchar('\n');
     */
 
-    current = measureArray[0];
-    for (i = 0; i < size; ++i){
-        randInt = rand() % (size - i);
-        current = getListAfterNSteps(current, randInt, &prev);
-        deleteListEl(current, prev);
-        if (head != NULL) {
-            last->next = current;
-        } else {
-            head = last = current;
+    head = current = measureArray[0];
+    for (i = 1; i < size; ++i){
+        randInt = rand() % size;
+        temp = measureArray[randInt];
+        while (temp == current || temp->next != NULL) {
+            randInt = (++randInt) % size;
+            temp = measureArray[randInt];
         }
-        last = current;
+        current->next = temp;
         current = current->next;
     }
-    last->next = head;
+    current->next = head;
     return head;
 }
