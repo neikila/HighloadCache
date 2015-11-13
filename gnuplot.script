@@ -2,7 +2,7 @@ set terminal x11 size 1360, 700
 set title 'Caches size'
 set xlabel 'Elements Size'
 set ylabel 'Time'
-set xrange [0:8388608]
+set xrange [0:5388608]
 set yrange [0:0.1]
 set grid
 plot 'results' using 1:2 w l lw 2 title 'Random access'

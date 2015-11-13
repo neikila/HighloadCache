@@ -8,7 +8,6 @@
 
 struct List {
     struct List* next;
-    struct List* prev;
     size_t index;
 };
 
@@ -23,6 +22,7 @@ MeasureList** measureArray;
 
 MeasureList* prepare(const size_t);
 void freeMeasureList(const size_t);
+void prepareCache(size_t, size_t, MeasureList*);
 
 int main() {
     srand(time(NULL));
@@ -31,10 +31,10 @@ int main() {
 
     FILE* results = fopen("results", "w");
     size_t size = 8;
-    size_t innerLoopsAmount = 90;
+    const size_t innerLoopsAmount = 1000;
+    size_t k;
     size_t maxSize = 4;
-    size_t i, k;
-    size_t temp;
+//    size_t temp;
 
     while ((sizeof(MeasureList) * size / 1024 / 1024) < maxSize) {
         printf("\nSize: %d\n", (int)size);
@@ -43,17 +43,20 @@ int main() {
         printf("                      %ld kB\n", sizeof(MeasureList) * size / 1024);
         printf("                      %ld MB\n", sizeof(MeasureList) * size / 1024 / 1024);
 
-        MeasureList* randomIndexes = prepare(size); 
-
+        MeasureList* head = prepare(size); 
+        MeasureList* randomIndexes = head;
+        
+        k = innerLoopsAmount;
+        prepareCache(200, size, randomIndexes);
         printf("Start iterating\n");
         gettimeofday(&start, &tz);
-        for (k = 0; k < innerLoopsAmount; ++k) {
-            for (i = 0; i < size; ++i) {
+        while (--k > 0) {
+            randomIndexes = randomIndexes->next;
+            while (randomIndexes != head) {
                 //        if (randomIndexes == NULL)
                 //            printf("ERROR\n");
                 //        printf("%d ", (int)randomIndexes->index);
                 randomIndexes = randomIndexes->next;
-                temp = randomIndexes->index;
             }
         }
         gettimeofday(&finish, &tz);
@@ -63,11 +66,21 @@ int main() {
         double resultTime = ((double)(delta.tv_sec * 1000000 + delta.tv_usec)) / (innerLoopsAmount * size);
         printf("%f mc\n", resultTime);
         fprintf(results, "%ld %f\n", sizeof(MeasureList) * size, resultTime); 
+        fflush(results);
 
         freeMeasureList(size);
         size = (int) (size * 1.3);
     }
     fclose(results);
+}
+
+void inline prepareCache(size_t innerLoopsAmount, size_t size, MeasureList* randomIndexes) {
+    size_t i, k;
+    for (k = 0; k < innerLoopsAmount; ++k) {
+        for (i = 0; i < size; ++i) {
+            randomIndexes = randomIndexes->next;
+        }
+    }
 }
 
 void freeMeasureList(const size_t size) {
@@ -83,7 +96,6 @@ List* initListElement(List* parent, size_t value) {
     List* newListEl = (List*) malloc(sizeof(List));
     newListEl->next = NULL;
     newListEl->index = value;
-    newListEl->prev = parent;
 
     if (parent != NULL) {
         parent->next = newListEl;
@@ -91,18 +103,17 @@ List* initListElement(List* parent, size_t value) {
     return newListEl;
 }
 
-List* getListAfterNSteps(List* current, size_t steps) {
+List* getListAfterNSteps(List* current, size_t steps, List **prev) {
     while (steps-- > 0) {
+        *prev = current;
         current = current->next;
     }
     return current;
 }
 
-void deleteListEl(List* listEl) {
-    if (listEl->prev != NULL)
-        listEl->prev->next = listEl->next;
-    if (listEl->next != NULL)
-        listEl->next->prev = listEl->prev;
+void deleteListEl(List* listEl, List* prev) {
+    if (prev != NULL)
+        prev->next = listEl->next;
 }
 
 MeasureList* prepare(const size_t size) {
@@ -118,7 +129,6 @@ MeasureList* prepare(const size_t size) {
     for (i = 1; i < size; ++i) {
         current = initListElement(current, i);
     }
-    head->prev = current;
     current->next = head;
     current = head;
 
@@ -126,10 +136,11 @@ MeasureList* prepare(const size_t size) {
     size_t randInt;
     MeasureList* resultHead = NULL;
     MeasureList* last = resultHead; 
+    List* prev;
     for (i = 0; i < size; ++i){
         randInt = rand() % (size - i);
-        temp = current = getListAfterNSteps(current, randInt);
-        deleteListEl(current);
+        temp = current = getListAfterNSteps(current, randInt, &prev);
+        deleteListEl(current, prev);
         if (last != NULL) {
             last->next = measureArray[current->index];
         } else {
