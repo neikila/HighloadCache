@@ -4,10 +4,14 @@
 #include <sys/time.h>
 
 // lscpu
+size_t size = 8;
+double multiplier = 1.3;
+const size_t innerLoopsAmount = 1000;
+size_t maxSize = 8;
 
 struct MeasureList {
     struct MeasureList* next;
-    size_t index;
+//    size_t index;
 };
 
 typedef struct MeasureList MeasureList;
@@ -23,11 +27,7 @@ int main() {
     struct timezone tz;
 
     FILE* results = fopen("results", "w");
-    size_t size = 8;
-    double multiplier = 1.2;
-    const size_t innerLoopsAmount = 1000;
     size_t k;
-    size_t maxSize = 8;
 //    size_t temp;
 
     /*
@@ -97,10 +97,10 @@ void freeMeasureList(const size_t size) {
     measureArray = NULL;
 }
 
-MeasureList* initListElement(MeasureList* parent, size_t value) {
+inline MeasureList* initListElement(MeasureList* parent, size_t value) {
     MeasureList* newListEl = (MeasureList*) malloc(sizeof(MeasureList));
     newListEl->next = NULL;
-    newListEl->index = value;
+//    newListEl->index = value;
 
     if (parent != NULL) {
         parent->next = newListEl;
@@ -108,7 +108,7 @@ MeasureList* initListElement(MeasureList* parent, size_t value) {
     return newListEl;
 }
 
-MeasureList* getListAfterNSteps(MeasureList* current, size_t steps, MeasureList **prev) {
+inline MeasureList* getListAfterNSteps(MeasureList* current, size_t steps, MeasureList **prev) {
     while (steps-- > 0) {
         *prev = current;
         current = current->next;
@@ -124,14 +124,12 @@ void deleteListEl(MeasureList* listEl, MeasureList* prev) {
 MeasureList* prepare(const size_t size) {
     measureArray = (MeasureList**) malloc(sizeof(MeasureList*) * size);
     size_t i;
-    measureArray[0] = (MeasureList*) malloc(sizeof(MeasureList));
-    measureArray[0]->index = 0;
-    for (i = 1; i < size; ++i) {
+//    measureArray[0]->index = 0;
+    for (i = 0; i < size; ++i) {
         measureArray[i] = (MeasureList*) malloc(sizeof(MeasureList));
-        measureArray[i]->index = i;
-        measureArray[i - 1]->next = measureArray[i];
+//        measureArray[i]->index = i;
+        measureArray[i]->next = NULL;
     }
-    measureArray[size - 1]->next = measureArray[0];
 
     
     MeasureList* head = NULL;
